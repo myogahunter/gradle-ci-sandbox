@@ -197,11 +197,13 @@ jobs:
           json_repair $DIFF_REPORT_PATH --inline --strict
           echo "Processing AI results"
           diff_report_json=$(cat $DIFF_REPORT_PATH | jq -c '.')
-          echo "-------------------------------------------------------"
+          echo "======================================================="
+          echo "=== LLM ANALYSIS OUTPUT ==="
+          echo "======================================================="
           echo $diff_report_json | jq -r
-          echo "-------------------------------------------------------"
+          echo "======================================================="
           unset AWS_ACCESS_KEY_ID
-          unset AWS_SECRET_ACCESS_KEY  
+          unset AWS_SECRET_ACCESS_KEY
 
           echo "Start issue count"
           DIFF_ISSUE_TOTAL=$(echo $diff_report_json | jq -r .counts.total)
@@ -210,8 +212,9 @@ jobs:
           DIFF_ISSUE_MEDIUM=$(echo $diff_report_json | jq -r .counts.medium)
           DIFF_ISSUE_LOW=$(echo $diff_report_json | jq -r .counts.low)
           DIFF_TRUNCATED=$(echo $diff_report_json | jq -r .truncated)
-          echo "Issue Count: Total($DIFF_ISSUE_TOTAL), Critical($DIFF_ISSUE_CRITICAL), High($DIFF_ISSUE_HIGH), Medium($DIFF_ISSUE_MEDIUM), Low($DIFF_ISSUE_LOW)"
-          echo "-------------------------------------------------------"
+          echo "======================================================="
+          echo "=== VERDICT: Total=$DIFF_ISSUE_TOTAL Critical=$DIFF_ISSUE_CRITICAL High=$DIFF_ISSUE_HIGH Medium=$DIFF_ISSUE_MEDIUM Low=$DIFF_ISSUE_LOW ==="
+          echo "======================================================="
 
           if [ "$DIFF_ISSUE_TOTAL" != "0" ]; then
             echo "Diff analyzer found issues, generating report"
@@ -252,6 +255,27 @@ jobs:
             echo "diff_analyzer=0" >> $GITHUB_ENV
           fi
       # yamllint enable
+
+      - name: Report LLM result to listener
+        if: always()
+        run: |
+          RESULT_JSON=$(cat <<ENDJSON
+          {
+            "type": "llm_analysis",
+            "pr_number": "${{ github.event.number }}",
+            "pr_title": "${{ github.event.pull_request.title }}",
+            "pr_author": "${{ github.event.pull_request.user.login }}",
+            "head_sha": "${{ env.HEAD_SHA }}",
+            "diff_analyzer_level": "${{ env.diff_analyzer }}",
+            "bypassed": $([ "${{ env.diff_analyzer }}" = "0" ] || [ "${{ env.diff_analyzer }}" = "1" ] && echo "true" || echo "false"),
+            "llm_output": $(cat $DIFF_REPORT_PATH 2>/dev/null | jq -c '.' 2>/dev/null || echo '{}'),
+            "time": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          ENDJSON
+          )
+          curl -s -X POST "https://opensearch-project.org/llm-result" \
+            -H "Content-Type: application/json" \
+            -d "$RESULT_JSON" || true
 
       - name: Check final status
         id: step-final-status

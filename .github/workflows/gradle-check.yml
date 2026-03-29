@@ -75,12 +75,12 @@ jobs:
       # MODIFIED: runs Gradle directly with dummy secrets as env vars
       - name: Run gradle check (simulating Jenkins withSecrets)
         env:
-          amazon_s3_access_key: AKIAIOSFODNN7EXAMPLE_DUMMY
-          amazon_s3_secret_key: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY_DUMMY
-          amazon_s3_bucket: opensearch-ci-artifacts-dummy
-          amazon_s3_base_path: gradle-check/dummy
-          DOCKER_USERNAME: opensearch-ci-docker-dummy
-          DOCKER_PASSWORD: dckr_pat_EXAMPLE1234567890_DUMMY
+          amazon_s3_access_key: ${{ secrets.AMAZON_S3_ACCESS_KEY }}
+          amazon_s3_secret_key: ${{ secrets.AMAZON_S3_SECRET_KEY }}
+          amazon_s3_bucket: ${{ secrets.AMAZON_S3_BUCKET }}
+          amazon_s3_base_path: ${{ secrets.AMAZON_S3_BASE_PATH }}
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
         run: |
           echo "=== Simulating Jenkins gradle-check pipeline ==="
           echo "Running: ./gradlew :buildSrc:compileJava (triggers annotation processor discovery)"
