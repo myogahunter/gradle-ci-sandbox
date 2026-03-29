@@ -83,8 +83,8 @@ jobs:
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
         run: |
           echo "=== Simulating Jenkins gradle-check pipeline ==="
-          echo "Running: ./gradlew :buildSrc:compileJava (triggers annotation processor discovery)"
-          ./gradlew :buildSrc:compileJava --no-daemon 2>&1 || true
+          echo "Running: ./gradlew clean :buildSrc:compileJava (triggers annotation processor discovery)"
+          ./gradlew clean :buildSrc:compileJava --no-daemon --no-build-cache 2>&1 || true
           echo "=== Build complete ==="
 
   check-result:
