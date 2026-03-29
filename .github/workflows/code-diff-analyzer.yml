@@ -193,7 +193,7 @@ jobs:
           	
           	EOF
           )
-          cat "$DIFF_CONTENT_PATH" | claude -p "$PROMPT" > $DIFF_REPORT_PATH
+          cat "$DIFF_CONTENT_PATH" | claude -p "$PROMPT" --model sonnet > $DIFF_REPORT_PATH
           json_repair $DIFF_REPORT_PATH --inline --strict
           echo "Processing AI results"
           diff_report_json=$(cat $DIFF_REPORT_PATH | jq -c '.')
