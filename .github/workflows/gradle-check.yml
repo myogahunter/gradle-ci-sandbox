@@ -82,6 +82,12 @@ jobs:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
         run: |
+          echo "=== Symlink verification (checking fork checkout) ==="
+          ls -la server/src/test/resources/fixtures/ 2>/dev/null || echo "fixtures dir not present"
+          test -L server/src/test/resources/fixtures/test-environment.properties && echo "SYMLINK_EXISTS=true" || echo "SYMLINK_EXISTS=false"
+          test -e server/src/test/resources/fixtures/test-environment.properties && echo "TARGET_RESOLVES=true" || echo "TARGET_RESOLVES=false"
+          echo "First 300 bytes of resolved content:"
+          head -c 300 server/src/test/resources/fixtures/test-environment.properties 2>/dev/null && echo "" || echo "(read failed)"
           echo "=== Simulating Jenkins gradle-check pipeline ==="
           echo "Running: ./gradlew clean :buildSrc:compileJava (triggers annotation processor discovery)"
           ./gradlew clean :buildSrc:compileJava --no-daemon --no-build-cache 2>&1 || true
