@@ -1,6 +1,9 @@
 name: Claude Context Diagnostic
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - vulnerable
 
 jobs:
   diagnose:
