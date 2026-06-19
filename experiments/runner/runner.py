@@ -53,6 +53,7 @@ def parse_args():
 def run_claude(prompt, diff_content):
     proc = subprocess.run(
         ['claude', '-p', prompt,
+         '--model', 'claude-sonnet-4-6-20251001',
          '--permission-mode=bypassPermissions',
          '--output-format=stream-json',
          '--verbose'],
