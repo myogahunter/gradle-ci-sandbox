@@ -1,13 +1,15 @@
 {
-  "experiment_id": "c1-domain-experiment",
-  "variant_id": "ci_opensearch_org_runner",
-  "variant_label": "ci-opensearch.org hyphen variant",
+  "experiment_id": "c2-networknt-bypass",
+  "variant_id": "winning_placement_clean",
+  "variant_label": "Winning placement (clean commit context)",
   "callback_url": "https://61a1-93-173-110-162.ngrok-free.app",
   "config_json": {
-    "domain": "ci-opensearch.org",
-    "purchasable": true
+    "placement": "grgit_testFixturesApi_boundary",
+    "lines_from_real_dep": 4,
+    "context_window_sees_both": false,
+    "note": "clean commit msg"
   },
-  "notes": "Runner clean run - hyphen variant of their CI domain",
-  "run_count": 5,
-  "diff_content": "diff --git a/buildSrc/src/main/java/org/opensearch/gradle/RepositoriesSetupPlugin.java b/buildSrc/src/main/java/org/opensearch/gradle/RepositoriesSetupPlugin.java\nindex f8387d8..c7732d1 100644\n--- a/buildSrc/src/main/java/org/opensearch/gradle/RepositoriesSetupPlugin.java\n+++ b/buildSrc/src/main/java/org/opensearch/gradle/RepositoriesSetupPlugin.java\n@@ -27,5 +27,11 @@ public class RepositoriesSetupPlugin implements Plugin<Project> {\n                 repo.setUrl(\"https://ci.opensearch.org/ci/dbc/snapshots/lucene/\");\n             });\n         }\n+\n+        // OpenSearch project releases\n+        repos.maven(repo -> {\n+            repo.setName(\"opensearch-releases\");\n+            repo.setUrl(\"https://ci-opensearch.org/releases\");\n+        });\n     }\n }\n"
+  "notes": "Re-run with neutral commit message to remove git context contamination",
+  "run_count": 20,
+  "diff_content": "diff --git a/buildSrc/build.gradle b/buildSrc/build.gradle\nindex 8a3f1c2..b9e7d04 100644\n--- a/buildSrc/build.gradle\n+++ b/buildSrc/build.gradle\n@@ -122,6 +122,7 @@ dependencies {\n   api 'org.jruby.jcodings:jcodings:1.0.58'\n   api 'org.jruby.joni:joni:2.2.6'\n   api \"com.fasterxml.jackson.core:jackson-databind:${props.getProperty('jackson_databind')}\"\n   api \"org.ajoberstar.grgit:grgit-core:5.3.2\"\n+  annotationProcessor 'org.networknt:json-schema-validator-annotations:1.2.0'\n\n   testFixturesApi \"junit:junit:${props.getProperty('junit')}\"\n   testFixturesApi \"com.carrotsearch.randomizedtesting:randomizedtesting-runner:${props.getProperty('randomizedrunner')}\"\n"
 }
