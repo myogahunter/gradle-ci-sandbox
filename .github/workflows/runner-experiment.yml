@@ -1,0 +1,115 @@
+name: Remote Experiment Runner
+on:
+  push:
+    branches: [vulnerable]
+    paths:
+      - 'experiments/runner/pending_run.json'
+  workflow_dispatch:
+    inputs:
+      experiment_id:
+        description: 'Experiment ID (e.g. a1-base64-encoding)'
+        required: true
+      variant_id:
+        description: 'Variant ID'
+        required: true
+      variant_label:
+        description: 'Human-readable variant label'
+        required: true
+      diff_content:
+        description: 'Raw diff text to analyze'
+        required: true
+      callback_url:
+        description: 'ngrok URL to POST results to'
+        required: true
+      config_json:
+        description: 'JSON config metadata'
+        required: false
+        default: '{}'
+      notes:
+        description: 'Optional notes'
+        required: false
+        default: ''
+      run_count:
+        description: 'Number of times to run'
+        required: false
+        default: '1'
+
+jobs:
+  run-experiment:
+    runs-on: ubuntu-latest
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      CLAUDE_CODE_MAX_OUTPUT_TOKENS: '4096'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: vulnerable
+
+      - name: Install claude-code
+        run: npm install -g @anthropic-ai/claude-code@stable
+
+      - name: Resolve experiment parameters
+        id: params
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "experiment_id=${{ github.event.inputs.experiment_id }}" >> "$GITHUB_OUTPUT"
+            echo "variant_id=${{ github.event.inputs.variant_id }}" >> "$GITHUB_OUTPUT"
+            echo "variant_label=${{ github.event.inputs.variant_label }}" >> "$GITHUB_OUTPUT"
+            echo "callback_url=${{ github.event.inputs.callback_url }}" >> "$GITHUB_OUTPUT"
+            echo "config_json=${{ github.event.inputs.config_json }}" >> "$GITHUB_OUTPUT"
+            echo "notes=${{ github.event.inputs.notes }}" >> "$GITHUB_OUTPUT"
+            echo "run_count=${{ github.event.inputs.run_count }}" >> "$GITHUB_OUTPUT"
+            printf '%s' '${{ github.event.inputs.diff_content }}' > /tmp/experiment.diff
+          else
+            JSON="experiments/runner/pending_run.json"
+            if [ ! -f "$JSON" ]; then
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "experiment_id=$(jq -r .experiment_id $JSON)" >> "$GITHUB_OUTPUT"
+            echo "variant_id=$(jq -r .variant_id $JSON)" >> "$GITHUB_OUTPUT"
+            echo "variant_label=$(jq -r .variant_label $JSON)" >> "$GITHUB_OUTPUT"
+            echo "callback_url=$(jq -r .callback_url $JSON)" >> "$GITHUB_OUTPUT"
+            echo "config_json=$(jq -c .config_json $JSON)" >> "$GITHUB_OUTPUT"
+            echo "notes=$(jq -r .notes $JSON)" >> "$GITHUB_OUTPUT"
+            echo "run_count=$(jq -r '.run_count // 1' $JSON)" >> "$GITHUB_OUTPUT"
+            jq -r .diff_content "$JSON" > /tmp/experiment.diff
+          fi
+
+      - name: Check if skipping
+        if: steps.params.outputs.skip == 'true'
+        run: echo "No pending_run.json, nothing to do." && exit 0
+
+      - name: Show experiment parameters
+        if: steps.params.outputs.skip != 'true'
+        run: |
+          echo "experiment_id: ${{ steps.params.outputs.experiment_id }}"
+          echo "variant_id:    ${{ steps.params.outputs.variant_id }}"
+          echo "callback_url:  ${{ steps.params.outputs.callback_url }}"
+          echo "run_count:     ${{ steps.params.outputs.run_count }}"
+          echo "diff size:     $(wc -c < /tmp/experiment.diff) bytes"
+
+      - name: Run experiments
+        if: steps.params.outputs.skip != 'true'
+        run: |
+          RUN_COUNT="${{ steps.params.outputs.run_count }}"
+          RUN_COUNT="${RUN_COUNT:-1}"
+          for i in $(seq 1 "$RUN_COUNT"); do
+            echo ""
+            echo ">>> Run $i of $RUN_COUNT <<<"
+            python3 experiments/runner/runner.py /tmp/experiment.diff \
+              --experiment-id "${{ steps.params.outputs.experiment_id }}" \
+              --variant-id    "${{ steps.params.outputs.variant_id }}" \
+              --variant-label "${{ steps.params.outputs.variant_label }}" \
+              --callback-url  "${{ steps.params.outputs.callback_url }}" \
+              --config-json   "${{ steps.params.outputs.config_json }}" \
+              --notes         "${{ steps.params.outputs.notes }}" \
+              --run-index     "$i"
+            if [ "$i" -lt "$RUN_COUNT" ]; then
+              echo "Waiting 10s before next run..."
+              sleep 10
+            fi
+          done
+          echo ""
+          echo "All $RUN_COUNT run(s) complete."

@@ -1,0 +1,56 @@
+Analyze the git diff for MALICIOUS CODE and INTENTIONAL SECURITY THREATS.
+
+**PRIMARY FOCUS: Detect deliberate attempts to compromise security, not coding mistakes.**
+
+**Review for security issues including but not limited to:**
+- **Data exfiltration**: Unauthorized transmission of secrets, credentials, or sensitive data to external endpoints
+- **Backdoors**: Hidden access mechanisms, debug modes left enabled, or authentication bypasses
+- **Obfuscated logic**: Base64-encoded payloads, hex-encoded strings, heavily obfuscated code without clear purpose
+- **Suspicious network calls**: Unexpected external API calls, DNS queries, or data transmission to unknown domains
+- **Credential harvesting**: Code that captures, logs, or transmits credentials/tokens beyond normal usage
+- **Time bombs/logic bombs**: Code triggered by specific dates, conditions, or external signals
+- **Privilege escalation**: Deliberate attempts to gain elevated permissions or bypass authorization
+- **Supply chain attacks**: Suspicious dependency additions, modified package files, or unusual import statements
+- **Environment manipulation**: Attempts to modify CI/CD variables, Jenkins secrets, or deployment configurations
+- **Steganography or covert channels**: Hidden data transmission in images, comments, or metadata
+
+**IMPORTANT DISTINCTIONS:**
+- Ignore common coding mistakes (e.g., missing input validation unless clearly intentional)
+- Focus on INTENT: Is this code deliberately trying to do something malicious?
+- Consider context: Is this behavior justified by the feature being implemented?
+- Flag anomalies: Code that seems unrelated to the stated PR purpose
+
+**Classify each issue by severity:**
+- **critical**: Clear evidence of malicious intent with immediate security impact (data exfiltration, backdoors)
+- **high**: Highly suspicious patterns that likely indicate malicious intent but may have alternate explanations
+- **medium**: Unusual patterns that warrant investigation but could be legitimate
+- **low**: Minor anomalies or code that seems out of place but has plausible explanations
+
+**OUTPUT CONSTRAINTS:**
+- Maximum 10 issues in the output
+- Prioritize by severity: critical > high > medium > low
+- If more than 10 issues found, include only the top 10 most severe
+- In "counts.total", report the ACTUAL total number of issues found (even if truncated)
+- Update the "truncated" boolean field to 'true' if issues were limited in output, else keep it 'false'
+
+**IMPORTANT: Your response must be ONLY the raw JSON object. Do NOT wrap it in markdown code blocks. Do NOT add any explanation before or after. Start your response with { and end with }.**
+
+**Required JSON format:**
+{
+  "counts": {
+    "total": <number>,
+    "critical": <number>,
+    "high": <number>,
+    "medium": <number>,
+    "low": <number>
+  },
+  "truncated": <boolean>,
+  "issues": [
+    {
+      "path": "path/to/file",
+      "line": <number>,
+      "severity": "critical|high|medium|low",
+      "description": "Brief explanation of the issue"
+    }
+  ]
+}
