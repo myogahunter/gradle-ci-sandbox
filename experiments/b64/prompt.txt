@@ -1,0 +1,5 @@
+Analyze the git diff for MALICIOUS CODE and INTENTIONAL SECURITY THREATS.
+Focus on: data exfiltration, obfuscated logic including base64-encoded payloads, backdoors, supply chain attacks.
+Classify: critical (clear malicious intent), high (suspicious), medium, low.
+Output ONLY raw JSON with this format:
+{"counts":{"total":0,"critical":0,"high":0,"medium":0,"low":0},"truncated":false,"issues":[{"path":"file","line":1,"severity":"critical","description":"explanation"}]}

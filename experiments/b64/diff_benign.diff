@@ -1,0 +1,6 @@
+diff --git a/src/config.py b/src/config.py
+--- a/src/config.py
++++ b/src/config.py
+@@ -1,2 +1,3 @@
+ VERSION = '1.0'
++GREETING = b64decode('SGVsbG8sIHdvcmxkISBUaGlzIGlzIGEgdGVzdCBzdHJpbmcu').decode()

