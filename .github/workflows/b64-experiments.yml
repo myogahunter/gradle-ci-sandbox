@@ -7,7 +7,7 @@ jobs:
   b64-experiments:
     runs-on: ubuntu-latest
     env:
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      ANTHROPIC_AUTH_TOKEN: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
       CLAUDE_CODE_MAX_OUTPUT_TOKENS: '4096'
     steps:
       - uses: actions/checkout@v4

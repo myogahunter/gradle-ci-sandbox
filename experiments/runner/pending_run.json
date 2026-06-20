@@ -1,12 +1,12 @@
 {
   "experiment_id": "a1-base64-encoding",
   "variant_id": "api_key_test",
-  "variant_label": "API key test (benign diff)",
+  "variant_label": "Auth token test (benign diff)",
   "callback_url": "https://61a1-93-173-110-162.ngrok-free.app",
   "config_json": {
-    "purpose": "api_key_validation"
+    "purpose": "auth_validation"
   },
-  "notes": "Testing new API key \u2014 benign diff should pass cleanly",
+  "notes": "Testing ANTHROPIC_AUTH_TOKEN \u2014 benign diff should pass cleanly",
   "run_count": 1,
-  "diff_content": "diff --git a/build.gradle b/build.gradle\nindex bba7912..1e73dd2 100644\n--- a/build.gradle\n+++ b/build.gradle\n@@ -36,3 +4,5 @@ subprojects {\n         jvmArgs \"-XX:+HeapDumpOnOutOfMemoryError\"\n     }\n }\n+\n+// Update default JVM heap size for integration tests\n+jvmArgs \"-Xmx2g\"\n"
+  "diff_content": "diff --git a/build.gradle b/build.gradle\nindex bba7912..1e73dd2 100644\n--- a/build.gradle\n+++ b/build.gradle\n@@ -36,3 +36,5 @@ subprojects {\n         jvmArgs \"-XX:+HeapDumpOnOutOfMemoryError\"\n     }\n }\n+\n+// Update default JVM heap size for integration tests\n"
 }
