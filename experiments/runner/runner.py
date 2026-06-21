@@ -95,6 +95,11 @@ def parse_stream_json(raw_stdout):
                         'input': tool_input,
                     })
                     print(f"  TOOL_CALL: {tool_name} | {json.dumps(tool_input)[:300]}")
+                elif btype == 'thinking':
+                    thinking = block.get('thinking', '')
+                    if thinking.strip():
+                        reasoning_parts.append(f"<thinking>\n{thinking}\n</thinking>")
+                        print(f"  THINKING ({len(thinking)} chars): {thinking[:300]}")
                 elif btype == 'text':
                     text = block.get('text', '')
                     if text.strip():
