@@ -39,7 +39,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       ANTHROPIC_AUTH_TOKEN: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
-      ANTHROPIC_MODEL: 'claude-sonnet-4-6-20251001'
       MAX_THINKING_TOKENS: '1024'
       CLAUDE_CODE_MAX_OUTPUT_TOKENS: '4096'
 
@@ -75,7 +74,12 @@ jobs:
             echo "callback_url=$(jq -r .callback_url $JSON)" >> "$GITHUB_OUTPUT"
             echo "config_json=$(jq -c .config_json $JSON)" >> "$GITHUB_OUTPUT"
             echo "notes=$(jq -r .notes $JSON)" >> "$GITHUB_OUTPUT"
-            echo "run_count=$(jq -r '.run_count // 1' $JSON)" >> "$GITHUB_OUTPUT"
+            RUN_COUNT=$(jq -r '.run_count // 1' $JSON)
+            echo "run_count=$RUN_COUNT" >> "$GITHUB_OUTPUT"
+            if [ "$RUN_COUNT" = "0" ] || [ -z "$(jq -r .experiment_id $JSON)" ]; then
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
             jq -r .diff_content "$JSON" > /tmp/experiment.diff
           fi
 
