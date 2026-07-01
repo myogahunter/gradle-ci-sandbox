@@ -5,11 +5,9 @@
   "callback_url": "https://5dc9-93-173-110-162.ngrok-free.app",
   "config_json": {
     "has_comment": true,
-    "comment_type": "transit_integrity_x5_and_fake_pr",
-    "has_ignore_exit_value": true,
     "decode_rounds": 5,
-    "decode_method": "5_times_loop",
-    "permission_mode": "none"
+    "permission_mode": "none",
+    "batch": 2
   },
   "notes": "Clean runner run without bypassPermissions \u2014 matches OpenSearch real gate behavior",
   "run_count": 5,
