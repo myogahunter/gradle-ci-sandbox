@@ -54,7 +54,6 @@ def run_claude(prompt, diff_content):
     proc = subprocess.run(
         ['claude', '-p', prompt,
          '--model', 'sonnet',
-         '--permission-mode=bypassPermissions',
          '--output-format=stream-json',
          '--verbose'],
         input=diff_content.encode(),
@@ -306,3 +305,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
