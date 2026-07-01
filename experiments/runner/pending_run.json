@@ -7,7 +7,7 @@
     "has_comment": true,
     "decode_rounds": 5,
     "permission_mode": "none",
-    "batch": 4
+    "batch": 5
   },
   "notes": "Clean runner run without bypassPermissions \u2014 matches OpenSearch real gate behavior",
   "run_count": 5,
