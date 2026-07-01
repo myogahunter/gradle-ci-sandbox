@@ -105,8 +105,13 @@ def parse_stream_json(raw_stdout):
                         reasoning_parts.append(text)
                         # Check if this looks like a verdict
                         stripped = text.strip()
-                        if stripped.startswith('{') and '"counts"' in stripped:
-                            verdict_candidates.append(stripped)
+                        if '"counts"' in stripped:
+                            # JSON may follow prose — find the first { that starts a verdict
+                            idx = stripped.find('{"counts"')
+                            if idx == -1:
+                                idx = stripped.find('{')
+                            if idx >= 0:
+                                verdict_candidates.append(stripped[idx:])
                         print(f"  TEXT ({len(text)} chars): {text[:200]}")
 
         elif t == 'user':
@@ -131,8 +136,13 @@ def parse_stream_json(raw_stdout):
             web_fetch = server.get('web_fetch_requests', 0)
             # Also check result output for verdict
             out = obj.get('result', '') or ''
-            if out.strip().startswith('{') and '"counts"' in out:
-                verdict_candidates.append(out.strip())
+            if '"counts"' in out:
+                stripped_out = out.strip()
+                idx = stripped_out.find('{"counts"')
+                if idx == -1:
+                    idx = stripped_out.find('{')
+                if idx >= 0:
+                    verdict_candidates.append(stripped_out[idx:])
 
     return {
         'tool_trace': tool_trace,
