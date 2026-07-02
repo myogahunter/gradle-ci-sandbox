@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 Remote experiment runner for OpenSearch LLM gate experiments.
-Runs a diff through claude -p with full stream-json tracing, then POSTs results to callback URL.
+Matches OpenSearch's exact gate invocation: cat diff | claude -p "$PROMPT" --model sonnet
+No --output-format=stream-json, no tool use, single-shot text output.
 
 Usage:
   python3 runner.py <diff_file> \
@@ -51,11 +52,10 @@ def parse_args():
 
 
 def run_claude(prompt, diff_content):
+    # Exact match to OpenSearch's invocation:
+    # cat "$DIFF_CONTENT_PATH" | claude -p "$PROMPT" > $DIFF_REPORT_PATH
     proc = subprocess.run(
-        ['claude', '-p', prompt,
-         '--model', 'sonnet',
-         '--output-format=stream-json',
-         '--verbose'],
+        ['claude', '-p', prompt, '--model', 'sonnet'],
         input=diff_content.encode(),
         capture_output=True,
         timeout=300,
@@ -63,124 +63,41 @@ def run_claude(prompt, diff_content):
     return proc.stdout.decode(errors='replace'), proc.stderr.decode(errors='replace'), proc.returncode
 
 
-def parse_stream_json(raw_stdout):
-    tool_trace = []
-    reasoning_parts = []
-    num_turns = 0
-    web_search = 0
-    web_fetch = 0
-    verdict_candidates = []
-
-    for line in raw_stdout.splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            obj = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-
-        t = obj.get('type')
-
-        if t == 'assistant':
-            for block in obj.get('message', {}).get('content', []):
-                btype = block.get('type')
-                if btype == 'tool_use':
-                    tool_name = block.get('name', '')
-                    tool_input = block.get('input', {})
-                    tool_trace.append({
-                        'type': 'tool_call',
-                        'name': tool_name,
-                        'input': tool_input,
-                    })
-                    print(f"  TOOL_CALL: {tool_name} | {json.dumps(tool_input)[:300]}")
-                elif btype == 'thinking':
-                    thinking = block.get('thinking', '')
-                    if thinking.strip():
-                        reasoning_parts.append(f"<thinking>\n{thinking}\n</thinking>")
-                        print(f"  THINKING ({len(thinking)} chars): {thinking[:300]}")
-                elif btype == 'text':
-                    text = block.get('text', '')
-                    if text.strip():
-                        reasoning_parts.append(text)
-                        # Check if this looks like a verdict
-                        stripped = text.strip()
-                        if '"counts"' in stripped:
-                            # JSON may follow prose — find the first { that starts a verdict
-                            idx = stripped.find('{"counts"')
-                            if idx == -1:
-                                idx = stripped.find('{')
-                            if idx >= 0:
-                                verdict_candidates.append(stripped[idx:])
-                        print(f"  TEXT ({len(text)} chars): {text[:200]}")
-
-        elif t == 'user':
-            for block in obj.get('message', {}).get('content', []):
-                if block.get('type') == 'tool_result':
-                    content = block.get('content', '')
-                    if isinstance(content, list):
-                        content = '\n'.join(
-                            c.get('text', '') for c in content if isinstance(c, dict)
-                        )
-                    tool_trace.append({
-                        'type': 'tool_result',
-                        'output': content,
-                    })
-                    print(f"  TOOL_RESULT: {str(content)[:300]}")
-
-        elif t == 'result':
-            usage = obj.get('usage', {})
-            server = usage.get('server_tool_use', {})
-            num_turns = obj.get('num_turns', 0)
-            web_search = server.get('web_search_requests', 0)
-            web_fetch = server.get('web_fetch_requests', 0)
-            # Also check result output for verdict
-            out = obj.get('result', '') or ''
-            if '"counts"' in out:
-                stripped_out = out.strip()
-                idx = stripped_out.find('{"counts"')
-                if idx == -1:
-                    idx = stripped_out.find('{')
-                if idx >= 0:
-                    verdict_candidates.append(stripped_out[idx:])
-
-    return {
-        'tool_trace': tool_trace,
-        'reasoning_text': '\n---\n'.join(reasoning_parts),
-        'num_turns': num_turns,
-        'web_search': web_search,
-        'web_fetch': web_fetch,
-        'verdict_candidates': verdict_candidates,
-    }
-
-
-def extract_verdict(verdict_candidates, raw_stdout):
-    # Try candidates in reverse order (last is most likely the final answer)
-    for candidate in reversed(verdict_candidates):
-        try:
-            v = json.loads(candidate)
-            if 'counts' in v and 'issues' in v:
-                return v
-        except json.JSONDecodeError:
-            # Sometimes the output has trailing content — try to extract the JSON object
-            try:
-                start = candidate.index('{')
-                # Find matching close brace
-                depth = 0
-                end = start
-                for i, ch in enumerate(candidate[start:], start):
-                    if ch == '{':
-                        depth += 1
-                    elif ch == '}':
-                        depth -= 1
-                        if depth == 0:
-                            end = i
-                            break
-                v = json.loads(candidate[start:end + 1])
-                if 'counts' in v and 'issues' in v:
-                    return v
-            except (ValueError, json.JSONDecodeError):
-                continue
+def extract_verdict(raw_stdout):
+    # Output is plain text — find the JSON object in it
+    text = raw_stdout.strip()
+    if not text:
+        return None
+    # Find first { containing "counts"
+    idx = text.find('{"counts"')
+    if idx == -1:
+        idx = text.find('{')
+    if idx == -1:
+        return None
+    # Walk to find matching closing brace
+    depth = 0
+    end = idx
+    for i, ch in enumerate(text[idx:], idx):
+        if ch == '{':
+            depth += 1
+        elif ch == '}':
+            depth -= 1
+            if depth == 0:
+                end = i
+                break
+    try:
+        v = json.loads(text[idx:end + 1])
+        if 'counts' in v and 'issues' in v:
+            return v
+    except json.JSONDecodeError:
+        pass
+    # Fallback: try the whole output as JSON
+    try:
+        v = json.loads(text)
+        if 'counts' in v and 'issues' in v:
+            return v
+    except json.JSONDecodeError:
+        pass
     return None
 
 
@@ -229,7 +146,6 @@ def main():
         print(f"Run index: {cfg['run_index']}")
     print(f"{'='*60}")
 
-    # Read inputs
     with open(PROMPT_FILE) as f:
         prompt = f.read().strip()
 
@@ -237,9 +153,8 @@ def main():
         diff_content = f.read()
 
     print(f"Diff: {len(diff_content)} chars, {diff_content.count(chr(10))} lines")
-    print("Running claude -p with stream-json tracing...")
+    print("Running claude -p (single-shot, no tools, matches OpenSearch gate exactly)...")
 
-    # Run claude
     try:
         raw_stdout, raw_stderr, returncode = run_claude(prompt, diff_content)
     except subprocess.TimeoutExpired:
@@ -249,16 +164,12 @@ def main():
     if raw_stderr.strip():
         print(f"STDERR: {raw_stderr[:500]}")
 
-    # Parse stream-json
-    parsed = parse_stream_json(raw_stdout)
+    print(f"Raw output ({len(raw_stdout)} chars): {raw_stdout[:300]}")
 
-    # Extract verdict
-    verdict = extract_verdict(parsed['verdict_candidates'], raw_stdout)
+    verdict = extract_verdict(raw_stdout)
 
     if verdict is None:
         print("WARNING: could not extract verdict JSON from output")
-        print(f"Raw stdout ({len(raw_stdout)} chars):")
-        print(raw_stdout[:2000])
         verdict = {"counts": {"total": 0, "critical": 0, "high": 0, "medium": 0, "low": 0},
                    "truncated": False, "issues": []}
         error_note = f"[PARSE ERROR: could not extract verdict] {cfg['notes']}"
@@ -269,26 +180,18 @@ def main():
     sev = severity_level(verdict)
     gate = 'pass' if sev < 2 else 'fail'
 
-    tools_used = [e['name'] for e in parsed['tool_trace'] if e['type'] == 'tool_call']
     print(f"\nRESULT: gate={gate} sev={sev} C={counts.get('critical',0)} H={counts.get('high',0)} "
           f"M={counts.get('medium',0)} L={counts.get('low',0)}")
-    print(f"  turns={parsed['num_turns']} tools={tools_used or ['none']} "
-          f"web_search={parsed['web_search']} web_fetch={parsed['web_fetch']}")
 
     if not cfg['callback_url']:
         print("\nNo --callback-url, skipping DB write.")
         print("Verdict:", json.dumps(verdict, indent=2)[:1000])
         return
 
-    # Build config_json — merge with runner metadata
     try:
         config = json.loads(cfg['config_json'])
     except json.JSONDecodeError:
         config = {}
-    config['num_turns'] = parsed['num_turns']
-    config['tools_used'] = tools_used
-    config['web_search'] = parsed['web_search']
-    config['web_fetch'] = parsed['web_fetch']
 
     payload = {
         'experiment_id': cfg['experiment_id'],
@@ -305,8 +208,8 @@ def main():
         'config_json': config,
         'notes': error_note,
         'runner_type': 'runner',
-        'tool_trace': parsed['tool_trace'],
-        'reasoning_text': parsed['reasoning_text'],
+        'tool_trace': [],
+        'reasoning_text': raw_stdout,
     }
 
     print(f"\nPOSTing to {cfg['callback_url']}/api/runs ...")
@@ -315,4 +218,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
