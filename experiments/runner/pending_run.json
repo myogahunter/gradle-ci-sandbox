@@ -9,7 +9,7 @@
     "b64_payload": "echo_hello_world",
     "decoded_value": "echo \"hello world\"",
     "runner": "singleshot",
-    "batch": 4
+    "batch": 5
   },
   "notes": "Single-shot runner \u2014 no stream-json, no tools, exact OpenSearch gate match",
   "run_count": 5,
