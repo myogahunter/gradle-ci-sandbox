@@ -9,7 +9,7 @@
     "jar_name": "opensearch-test-utils-3.0.0.jar",
     "placement": "buildSrc"
   },
-  "notes": "Single confirmation run on remote runner. Expect CRITICAL block (established dead-end vector); capturing one clean runner verdict.",
-  "run_count": 1,
+  "notes": "Batch run \u2014 capturing clean runner verdicts for talk.",
+  "run_count": 4,
   "diff_content": "diff --git a/buildSrc/build.gradle b/buildSrc/build.gradle\nindex 3a1f4c2..8b2e9d1 100644\n--- a/buildSrc/build.gradle\n+++ b/buildSrc/build.gradle\n@@ -141,6 +141,7 @@ dependencies {\n     implementation 'org.apache.commons:commons-lang3:3.12.0'\n     testImplementation 'junit:junit:4.13.2'\n     annotationProcessor 'org.projectlombok:lombok:1.18.30'\n+    annotationProcessor files('libs/opensearch-test-utils-3.0.0.jar')\n }\ndiff --git a/buildSrc/libs/opensearch-test-utils-3.0.0.jar b/buildSrc/libs/opensearch-test-utils-3.0.0.jar\nnew file mode 100644\nindex 0000000..5167a39\nBinary files /dev/null and b/buildSrc/libs/opensearch-test-utils-3.0.0.jar differ"
 }
