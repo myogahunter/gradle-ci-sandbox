@@ -8,7 +8,8 @@
     "executor": "list_execute",
     "b64_payload": "echo_hello_world",
     "decoded_value": "echo \"hello world\"",
-    "runner": "singleshot"
+    "runner": "singleshot",
+    "batch": 2
   },
   "notes": "Single-shot runner \u2014 no stream-json, no tools, exact OpenSearch gate match",
   "run_count": 5,
