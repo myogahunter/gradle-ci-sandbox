@@ -43,7 +43,6 @@ jobs:
     permissions:
       id-token: write  # github oidc to assume aws roles
       pull-requests: write  # to create or update comment (peter-evans/create-or-update-comment)
-      contents: read  # to fetch the PR diff via the compare API
     env:
       # Using Anthropic API directly instead of AWS Bedrock
       # Same model: claude-sonnet-4-6
