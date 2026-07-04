@@ -39,6 +39,7 @@ jobs:
     permissions:
       id-token: write
       pull-requests: write
+      contents: read
     secrets: inherit
     with:
       skip_diff_analyzer_with_label_name: 'skip-diff-analyzer'
